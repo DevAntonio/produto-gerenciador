@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -5,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciamento de Produtos</title>
     <style>
+        /* Estilos Gerais */
         /* Estilos Gerais */
         body {
             font-family: Arial, sans-serif;
@@ -47,7 +49,7 @@
             background: white;
             border-radius: 8px;
             padding: 15px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
         }
 
         .product-card img {
@@ -80,11 +82,13 @@
             background: white;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
             margin-bottom: 20px;
         }
 
-        .admin-form input, .admin-form select, .admin-form textarea {
+        .admin-form input,
+        .admin-form select,
+        .admin-form textarea {
             width: 100%;
             padding: 8px;
             margin: 5px 0 15px;
@@ -98,7 +102,8 @@
             margin-top: 20px;
         }
 
-        .product-table th, .product-table td {
+        .product-table th,
+        .product-table td {
             border: 1px solid #ddd;
             padding: 12px;
             text-align: left;
@@ -125,24 +130,6 @@
             background: #dc3545;
             color: white;
         }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-        }
-
-        .modal-content {
-            background: white;
-            margin: 15% auto;
-            padding: 20px;
-            width: 50%;
-            border-radius: 5px;
-        }
     </style>
 </head>
 <body>
@@ -161,7 +148,7 @@
                 </select>
             </div>
             
-            <div class="products" id="productList"></div>
+            <div class="products" id="product-list"></div>
             
             <div class="cart">
                 <h3>Carrinho</h3>
@@ -170,13 +157,13 @@
             </div>
         </div>
 
-        <!-- Área do Admin (com campo de categoria editável) -->
+        <!-- Área do Admin -->
         <div id="adminView" style="display: none">
             <button class="btn btn-primary" id="addProductBtn">Adicionar Produto</button>
             
             <div class="admin-form" id="productForm" style="display: none">
                 <input type="text" id="productName" placeholder="Nome do Produto">
-                <input type="text" id="productCategory" placeholder="Categoria"> <!-- Alterado para input text -->
+                <input type="text" id="productCategory" placeholder="Categoria">
                 <input type="number" id="productPrice" placeholder="Preço">
                 <input type="number" id="productStock" placeholder="Quantidade">
                 <textarea id="productDescription" placeholder="Descrição"></textarea>
@@ -198,206 +185,96 @@
                 <tbody id="adminProductList"></tbody>
             </table>
         </div>
-
-        <!-- Modal de Confirmação -->
-        <div id="confirmModal" class="modal">
-            <div class="modal-content">
-                <p>Deseja realmente excluir este produto?</p>
-                <button class="btn btn-danger" id="confirmDeleteBtn">Sim</button>
-                <button class="btn btn-primary" id="cancelDeleteBtn">Não</button>
-            </div>
-        </div>
     </div>
 
-
     <script>
-        // Dados iniciais
-        let products = JSON.parse(localStorage.getItem('products')) || [];
-        let cart = JSON.parse(localStorage.getItem('cart')) || [];
-        let currentProduct = null;
-        let deleteProductId = null;
-    
-        // Elementos DOM
-        const storeView = document.getElementById('storeView');
-        const adminView = document.getElementById('adminView');
-        const categoryFilter = document.getElementById('categoryFilter');
-        const productList = document.getElementById('productList');
-        const cartItems = document.getElementById('cartItems');
-        const cartTotal = document.getElementById('cartTotal');
-        const addProductBtn = document.getElementById('addProductBtn');
-        const productForm = document.getElementById('productForm');
-        const saveProductBtn = document.getElementById('saveProductBtn');
-        const adminProductList = document.getElementById('adminProductList');
-        const confirmModal = document.getElementById('confirmModal');
-        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-        const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
-    
-        // Inicialização
-        function init() {
-            // Carregar categorias
-            const categories = [...new Set(products.map(p => p.category))];
-            categoryFilter.innerHTML = '<option value="all">Todas</option>' + 
-                categories.map(cat => `<option value="${cat}">${cat}</option>`).join('');
-            
-            // Eventos de navegação
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
-                    e.target.classList.add('active');
-                    
-                    if(e.target.dataset.view === 'store') {
-                        storeView.style.display = 'block';
-                        adminView.style.display = 'none';
-                        renderProducts();
-                        updateCart();
-                    } else {
-                        storeView.style.display = 'none';
-                        adminView.style.display = 'block';
-                        renderAdminProducts();
-                    }
-                });
-            });
-    
-            // Eventos do admin
-            addProductBtn.addEventListener('click', () => {
-                currentProduct = null;
-                productForm.style.display = 'block';
-                document.querySelectorAll('.admin-form input, .admin-form textarea').forEach(input => {
-                    input.value = '';
-                });
-            });
-    
-            saveProductBtn.addEventListener('click', saveProduct);
-            confirmDeleteBtn.addEventListener('click', confirmDelete);
-            cancelDeleteBtn.addEventListener('click', () => confirmModal.style.display = 'none');
-    
-            // Eventos da loja
-            categoryFilter.addEventListener('change', renderProducts);
-            productList.addEventListener('click', handleStoreClick);
-            adminProductList.addEventListener('click', handleAdminClick);
-            cartItems.addEventListener('click', handleCartUpdate);
-    
-            // Renderização inicial
-            renderProducts();
-            updateCart();
-            renderAdminProducts();
-        }
-    
-        // Manipular cliques na loja
-        function handleStoreClick(e) {
-            if(e.target.classList.contains('add-to-cart')) {
-                const productId = parseInt(e.target.dataset.id);
-                addToCart(productId);
+        // URL base do backend
+const API_URL = 'http://localhost:3000';
+
+let currentProductId = null; // Armazena o ID do produto sendo editado
+
+// Função para carregar produtos do backend
+async function loadProducts() {
+    try {
+        const response = await fetch(`${API_URL}/products`);
+        const products = await response.json();
+        renderProducts(products); // Renderiza os produtos na interface
+        populateCategoryFilter(products); // Preenche o filtro de categorias
+    } catch (error) {
+        console.error('Erro ao carregar produtos:', error);
+    }
+}
+
+// Função para preencher o filtro de categorias
+function populateCategoryFilter(products) {
+    const categories = [...new Set(products.map(p => p.category))];
+    const categoryFilter = document.getElementById('categoryFilter');
+    categoryFilter.innerHTML = '<option value="all">Todas as categorias</option>';
+    categories.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category;
+        option.textContent = category;
+        categoryFilter.appendChild(option);
+    });
+}
+
+// Função para filtrar produtos por categoria
+document.getElementById('categoryFilter').addEventListener('change', () => {
+    const selectedCategory = document.getElementById('categoryFilter').value;
+    if (selectedCategory === 'all') {
+        loadProducts(); // Carrega todos os produtos
+    } else {
+        filterProductsByCategory(selectedCategory);
+    }
+});
+
+// Função para filtrar produtos
+async function filterProductsByCategory(category) {
+    try {
+        const response = await fetch(`${API_URL}/products`);
+        const products = await response.json();
+        const filteredProducts = products.filter(p => p.category === category);
+        renderProducts(filteredProducts); // Renderiza apenas os produtos filtrados
+    } catch (error) {
+        console.error('Erro ao filtrar produtos:', error);
+    }
+}
+
+// Função para renderizar produtos na área do cliente
+function renderProducts(products) {
+    const productList = document.getElementById('product-list');
+    productList.innerHTML = ''; // Limpa a lista
+
+    products.forEach(product => {
+        const productCard = document.createElement('div');
+        productCard.classList.add('product-card');
+        productCard.innerHTML = `
+            <img src="${product.image}" alt="${product.name}">
+            <div class="product-info">
+                <h3>${product.name}</h3>
+                <p>Categoria: ${product.category}</p>
+                <p>Preço: R$ ${product.price.toFixed(2)}</p>
+                <p>Estoque: ${product.stock}</p>
+                <button onclick="addToCart(${product.id})">Adicionar ao Carrinho</button>
+            </div>
+        `;
+        productList.appendChild(productCard);
+    });
+}
+
+// Função para renderizar a tabela de produtos no admin
+function renderAdminProducts() {
+    fetch(`${API_URL}/products`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erro ao carregar produtos');
             }
-        }
-    
-        // Manipular cliques no admin
-        function handleAdminClick(e) {
-            if(e.target.classList.contains('edit-btn')) {
-                e.preventDefault();
-                const productId = parseInt(e.target.dataset.id);
-                currentProduct = products.find(p => p.id === productId);
-                
-                // Preencher formulário
-                document.getElementById('productName').value = currentProduct.name;
-                document.getElementById('productCategory').value = currentProduct.category;
-                document.getElementById('productPrice').value = currentProduct.price;
-                document.getElementById('productStock').value = currentProduct.stock;
-                document.getElementById('productDescription').value = currentProduct.description;
-                document.getElementById('productImage').value = currentProduct.image;
-                
-                productForm.style.display = 'block';
-            }
-    
-            if(e.target.classList.contains('delete-btn')) {
-                e.preventDefault();
-                deleteProductId = parseInt(e.target.dataset.id);
-                confirmModal.style.display = 'block';
-            }
-        }
-    
-        // Confirmar exclusão
-        function confirmDelete() {
-            if(deleteProductId) {
-                products = products.filter(p => p.id !== deleteProductId);
-                saveProducts();
-                renderAdminProducts();
-                renderProducts();
-                confirmModal.style.display = 'none';
-                deleteProductId = null;
-            }
-        }
-    
-        // Salvar produto (admin)
-        function saveProduct() {
-            const name = document.getElementById('productName').value.trim();
-            const category = document.getElementById('productCategory').value.trim();
-            const price = parseFloat(document.getElementById('productPrice').value);
-            const stock = parseInt(document.getElementById('productStock').value);
-            const description = document.getElementById('productDescription').value.trim();
-            const image = document.getElementById('productImage').value.trim();
-    
-            if(!name || !category || isNaN(price) || isNaN(stock) || price <= 0 || stock < 0) {
-                alert("Preencha todos os campos corretamente!");
-                return;
-            }
-    
-            if(currentProduct) {
-                // Atualizar produto
-                currentProduct.name = name;
-                currentProduct.category = category;
-                currentProduct.price = price;
-                currentProduct.stock = stock;
-                currentProduct.description = description;
-                currentProduct.image = image;
-            } else {
-                // Novo produto
-                const newProduct = {
-                    id: Date.now(),
-                    name,
-                    category,
-                    price,
-                    stock,
-                    description,
-                    image
-                };
-                products.push(newProduct);
-            }
-    
-            productForm.style.display = 'none';
-            saveProducts();
-            renderAdminProducts();
-            renderProducts();
-        }
-    
-        // Renderizar produtos na loja
-        function renderProducts() {
-            productList.innerHTML = '';
-            const filter = categoryFilter.value;
-            
-            const filteredProducts = products.filter(p => filter === 'all' || p.category === filter);
-    
-            filteredProducts.forEach(product => {
-                const card = document.createElement('div');
-                card.className = 'product-card';
-                card.innerHTML = `
-                    <img src="${product.image}" alt="${product.name}">
-                    <div class="product-info">
-                        <div class="product-name">${product.name}</div>
-                        <div class="product-price">R$ ${product.price.toFixed(2)}</div>
-                        <p>${product.description}</p>
-                        <button class="btn btn-primary add-to-cart" data-id="${product.id}">Adicionar ao Carrinho</button>
-                    </div>
-                `;
-                productList.appendChild(card);
-            });
-        }
-    
-        // Renderizar produtos no admin
-        function renderAdminProducts() {
-            adminProductList.innerHTML = '';
-            
+            return response.json();
+        })
+        .then(products => {
+            const adminProductList = document.getElementById('adminProductList');
+            adminProductList.innerHTML = ''; // Limpa a tabela
+
             products.forEach(product => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
@@ -413,66 +290,160 @@
                 `;
                 adminProductList.appendChild(row);
             });
-        }
-    
-        // Adicionar ao carrinho
-        function addToCart(productId) {
-            const product = products.find(p => p.id === productId);
-            if(product.stock <= 0) return;
-    
-            const existingItem = cart.find(item => item.product.id === productId);
-            if(existingItem) {
-                existingItem.quantity++;
-            } else {
-                cart.push({ product, quantity: 1 });
-            }
-    
-            product.stock--;
-            saveProducts();
-            updateCart();
-        }
-    
-        // Atualizar carrinho
-        function updateCart() {
-            cartItems.innerHTML = '';
-            let total = 0;
-    
-            cart.forEach(item => {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    ${item.product.name} 
-                    (Quantidade: ${item.quantity}) 
-                    - R$ ${(item.product.price * item.quantity).toFixed(2)}
-                    <button class="remove-item" data-id="${item.product.id}">Remover</button>
-                `;
-                cartItems.appendChild(li);
-                total += item.product.price * item.quantity;
+
+            // Adicionar eventos de clique aos botões "Editar" e "Excluir"
+            document.querySelectorAll('.edit-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    const productId = parseInt(button.dataset.id);
+                    editProduct(productId);
+                });
             });
-    
-            cartTotal.textContent = total.toFixed(2);
-            saveCart();
+
+            document.querySelectorAll('.delete-btn').forEach(button => {
+                button.addEventListener('click', () => {
+                    const productId = parseInt(button.dataset.id);
+                    deleteProduct(productId);
+                });
+            });
+        })
+        .catch(error => {
+            console.error('Erro ao carregar produtos:', error);
+            alert('Ocorreu um erro ao carregar a lista de produtos.');
+        });
+}
+
+// Função para editar um produto
+async function editProduct(id) {
+    try {
+        const response = await fetch(`${API_URL}/products/${id}`);
+        if (!response.ok) {
+            throw new Error(`Erro ao carregar produto: ${response.statusText}`);
         }
-    
-        // Manipular carrinho
-        function handleCartUpdate(e) {
-            if(e.target.classList.contains('remove-item')) {
-                const productId = parseInt(e.target.dataset.id);
-                cart = cart.filter(item => item.product.id !== productId);
-                updateCart();
+
+        const product = await response.json();
+
+        // Preencher o formulário com os dados do produto
+        document.getElementById('productName').value = product.name;
+        document.getElementById('productCategory').value = product.category;
+        document.getElementById('productPrice').value = product.price;
+        document.getElementById('productStock').value = product.stock;
+        document.getElementById('productDescription').value = product.description || '';
+        document.getElementById('productImage').value = product.image || '';
+
+        currentProductId = id; // Define o ID do produto sendo editado
+        document.getElementById('productForm').style.display = 'block'; // Exibir o formulário
+    } catch (error) {
+        console.error('Erro ao carregar produto:', error);
+        alert('Ocorreu um erro ao carregar o produto.');
+    }
+}
+
+// Adicionar eventos de clique aos botões "Editar"
+document.querySelectorAll('.edit-btn').forEach(button => {
+    button.addEventListener('click', () => {
+        const productId = parseInt(button.dataset.id);
+        editProduct(productId);
+    });
+});
+
+
+
+// Função para salvar o produto (adicionar ou editar)
+document.getElementById('saveProductBtn').addEventListener('click', async () => {
+    const name = document.getElementById('productName').value.trim();
+    const category = document.getElementById('productCategory').value.trim();
+    const price = parseFloat(document.getElementById('productPrice').value);
+    const stock = parseInt(document.getElementById('productStock').value);
+    const description = document.getElementById('productDescription').value.trim();
+    const image = document.getElementById('productImage').value.trim();
+
+    // Validar os campos
+    if (!name || !category || isNaN(price) || isNaN(stock)) {
+        alert('Preencha todos os campos corretamente!');
+        return;
+    }
+
+    const product = { name, category, price, stock, description, image };
+
+    try {
+        if (currentProductId) {
+            // Atualizar produto existente
+            const response = await fetch(`${API_URL}/products/${currentProductId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(product),
+            });
+
+            if (!response.ok) {
+                throw new Error('Erro ao atualizar produto');
             }
+
+            alert('Produto atualizado com sucesso!');
+            currentProductId = null; // Reseta o ID
+        } else {
+            // Adicionar novo produto
+            const response = await fetch(`${API_URL}/products`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(product),
+            });
+
+            if (!response.ok) {
+                throw new Error('Erro ao adicionar produto');
+            }
+
+            alert('Produto adicionado com sucesso!');
         }
-    
-        // Persistência de dados
-        function saveProducts() {
-            localStorage.setItem('products', JSON.stringify(products));
+
+        loadProducts(); // Recarregar a lista de produtos
+        renderAdminProducts(); // Atualizar a tabela no admin
+        document.getElementById('productForm').style.display = 'none'; // Fechar o formulário
+    } catch (error) {
+        console.error('Erro ao salvar produto:', error);
+        alert('Ocorreu um erro ao salvar o produto.');
+    }
+});
+
+// Função para excluir um produto
+function deleteProduct(id) {
+    if (confirm('Tem certeza que deseja excluir este produto?')) {
+        fetch(`${API_URL}/products/${id}`, {
+            method: 'DELETE',
+        })
+            .then(() => {
+                alert('Produto excluído com sucesso!');
+                loadProducts(); // Recarrega a lista de produtos
+                renderAdminProducts(); // Atualiza a tabela no admin
+            })
+            .catch(error => console.error('Erro ao excluir produto:', error));
+    }
+}
+
+// Alternar entre seções (Loja e Admin)
+document.querySelectorAll('.nav-link').forEach(link => {
+    link.addEventListener('click', (e) => {
+        e.preventDefault();
+
+        // Remove a classe 'active' de todos os links
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+
+        // Adiciona a classe 'active' ao link clicado
+        e.target.classList.add('active');
+
+        // Alterna entre as seções
+        if (e.target.dataset.view === 'store') {
+            document.getElementById('storeView').style.display = 'block';
+            document.getElementById('adminView').style.display = 'none';
+        } else {
+            document.getElementById('storeView').style.display = 'none';
+            document.getElementById('adminView').style.display = 'block';
+            renderAdminProducts(); // Carrega a tabela de produtos no admin
         }
-    
-        function saveCart() {
-            localStorage.setItem('cart', JSON.stringify(cart));
-        }
-    
-        // Inicializar aplicação
-        init();
+    });
+});
+
+// Carregar produtos ao iniciar
+loadProducts();
     </script>
 </body>
 </html>
